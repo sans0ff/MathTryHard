@@ -1,0 +1,70 @@
+name: Deploy HTML5 build to Pages
+
+# Runs automatically whenever you publish a new GitHub Release.
+# You can also trigger it manually from the Actions tab (workflow_dispatch).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Avoid two deployments racing each other if you publish releases quickly
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download HTML5 build from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          mkdir -p downloaded site
+
+          # For a manual run (workflow_dispatch) there's no release event,
+          # so fall back to the latest published release.
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
+          fi
+          echo "Using release tag: $TAG"
+
+          # Adjust the --pattern to match how you name the HTML5 zip,
+          # e.g. game-v1.0.0-html5.zip
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "*html5*.zip" \
+            --dir ./downloaded
+
+          unzip -o ./downloaded/*.zip -d ./site
+
+          # GameMaker's zip sometimes wraps everything in one top-level folder.
+          # If index.html isn't at the root, flatten that folder up one level.
+          if [ ! -f ./site/index.html ]; then
+            SUBDIR=$(find ./site -mindepth 1 -maxdepth 1 -type d | head -n 1)
+            if [ -n "$SUBDIR" ]; then
+              mv "$SUBDIR"/* ./site/
+            fi
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

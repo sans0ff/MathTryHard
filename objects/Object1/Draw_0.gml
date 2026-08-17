@@ -1,0 +1,8 @@
+draw_self()
+draw_set_font(Font1)
+draw_set_colour(c_white)
+draw_text(x+480, y, anwser)
+draw_text(x, y, $"{n1} * {n2} =")
+draw_text(x, y+150, $"Time: {int64(alarm_get(0)/30)}")
+if right_anwser == true then draw_sprite(good, -1, 1366, 766) else draw_sprite(bad, -1, 1366, 766)
+draw_text_transformed(x, y+350, $"Previous shit was:\n{n1O} * {n2O} = {nRO}", 0.3, 0.3, 0)

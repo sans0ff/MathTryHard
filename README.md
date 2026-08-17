@@ -1,0 +1,2 @@
+# MathTryHard
+math for tryhards
